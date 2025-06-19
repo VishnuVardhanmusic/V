@@ -1,24 +1,11 @@
 # src/review_agent.py
 
-from langchain.chat_models import ChatLiteLLM
-from langchain.schema import HumanMessage
-from config import MODEL_NAME, BASE_URL, API_KEY
-
-import os
-
-# Set up LiteLLM environment variables
-os.environ["LITELLM_API_KEY"] = API_KEY
-os.environ["LITELLM_URL"] = BASE_URL
-
-# Initialize Claude via LiteLLM
-llm = ChatLiteLLM(
-    model=MODEL_NAME,
-    base_url=BASE_URL
-)
+import requests
+from config import BASE_URL, API_KEY, MODEL_NAME
 
 def getReviewFromLLM(codeSnippet: str, guidelineDescription: str) -> dict:
     """
-    Sends code and guideline to Claude and returns review feedback.
+    Sends code and guideline to Claude 3.5 via LiteLLM proxy and returns JSON review.
 
     Args:
         codeSnippet (str): The flagged code line
@@ -27,6 +14,7 @@ def getReviewFromLLM(codeSnippet: str, guidelineDescription: str) -> dict:
     Returns:
         dict: LLM response with is_violation, reasoning, suggestion
     """
+
     prompt = f"""
 You are a strict embedded software code reviewer.
 
@@ -38,17 +26,37 @@ Guideline:
 Code:
 {codeSnippet}
 
-Reply in JSON format with the following fields:
-- is_violation: true or false
-- reasoning: explanation of whether it's a violation or not
-- suggestion: how to fix or improve it
+Reply strictly in JSON with the following keys:
+- is_violation (true or false)
+- reasoning
+- suggestion
 """
+
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
+
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
+
     try:
-        response = llm([HumanMessage(content=prompt)])
-        return eval(response.content)  # Expecting JSON dict as response
+        response = requests.post(f"{BASE_URL}/chat/completions", json=payload, headers=headers)
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"]
+
+        return eval(content) if content.strip().startswith("{") else {
+            "is_violation": None,
+            "reasoning": "Unexpected response format",
+            "suggestion": content.strip()
+        }
+
     except Exception as e:
         return {
             "is_violation": None,
-            "reasoning": f"LLM Error: {str(e)}",
+            "reasoning": f"Request Error: {str(e)}",
             "suggestion": "N/A"
         }
