@@ -1,0 +1,22 @@
+[
+  {
+    "id": "G001",
+    "description": "Avoid usage of printf inside Interrupt Service Routines (ISRs)."
+  },
+  {
+    "id": "G002",
+    "description": "Do not use goto statements in any function."
+  },
+  {
+    "id": "G003",
+    "description": "All local variables must be initialized before use."
+  },
+  {
+    "id": "G004",
+    "description": "Avoid magic numbers; use named constants via #define or const."
+  },
+  {
+    "id": "G005",
+    "description": "Function definitions should not exceed 50 lines."
+  }
+]
